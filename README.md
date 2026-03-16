@@ -1,66 +1,66 @@
-# Document AI Pipeline
+# Pipeline Document AI
 
-Extract structured information from administrative PDFs using OCR and LLM.
+Extraction d'informations structurées à partir de PDF administratifs en utilisant OCR et LLM.
 
-## Tech Stack
+## Stack Technique
 
 - **Python** 3.12
-- **Tesseract OCR** - Text extraction
-- **Poppler** - PDF to image conversion
-- **LangChain** - LLM orchestration
-- **Groq API** - LLM inference
+- **Tesseract OCR** - Extraction de texte
+- **Poppler** - Conversion PDF vers image
+- **LangChain** - Orchestration LLM
+- **Groq API** - Inférence LLM
 
-## Extracted Fields
+## Champs Extraits
 
-- `document_type` (invoice, quote, attestation)
-- `company_name`
-- `siren` (9 digits)
-- `siret` (14 digits)
-- `invoice_number`
+- `document_type` (facture, devis, attestation)
+- `company_name` (nom de l'entreprise)
+- `siren` (9 chiffres)
+- `siret` (14 chiffres)
+- `invoice_number` (numéro de facture)
 - `date` (YYYY-MM-DD)
-- `amount`
+- `amount` (montant)
 
-## Quick Start
+## Démarrage Rapide
 
-### 1. Install Dependencies
+### 1. Installer les dépendances
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Configure Environment
+### 2. Configurer l'environnement
 
-Edit `.env` file:
+Modifier le fichier `.env` :
 ```
-GROQ_API_KEY=your_api_key_here
-POPPLER_PATH=C:\path\to\poppler\Library\bin
+GROQ_API_KEY=votre_clé_api_ici
+POPPLER_PATH=C:\chemin\vers\poppler\Library\bin
 TESSERACT_PATH=C:\Program Files\Tesseract-OCR\tesseract.exe
 ```
 
-### 3. Run Pipeline
+### 3. Exécuter le pipeline
 
 ```bash
 python main.py --input data/documents --output data/results
 ```
 
-## Project Structure
+## Structure du Projet
 
 ```
-ocr-service/
+oc r-service/
 ├── data/
-│   ├── documents/      # Input PDFs
-│   └── results/        # Output JSON
+│   ├── documents/      # PDFs en entrée
+│   └── results/        # JSON en sortie
 ├── src/
-│   ├── ocr.py          # Tesseract OCR
-│   ├── yolo_detector.py # Region detection
+│   ├── ocr.py          # OCR Tesseract
+│   ├── yolo_detector.py # Détection de régions
 │   ├── llm_extractor.py # LangChain + Groq
-│   └── pipeline.py     # Main orchestrator
-├── main.py             # CLI entry point
-├── requirements.txt    # Dependencies
-└── .env                # Environment config
+│   └── pipeline.py     # Orchestrateur principal
+├── main.py             # Point d'entrée CLI
+├── requirements.txt    # Dépendances
+└── .env                # Configuration
 ```
 
-## Example Output
+## Exemple de Sortie
 
 ```json
 {
