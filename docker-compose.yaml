@@ -112,14 +112,9 @@ services:
       - docuflow-net
 
   airflow-init:
-    <<: *airflow-common
-    command: >
-      bash -c "airflow db migrate &&
-               airflow users create
-               --username admin --password admin
-               --firstname Admin --lastname User
-               --role Admin --email admin@docuflow.io"
-    restart: "no"
+      <<: *airflow-common
+      command: bash -c "airflow db migrate && airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@docuflow.io"
+      restart: "no"
 
   airflow-webserver:
     <<: *airflow-common
