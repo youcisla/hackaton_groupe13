@@ -1,13 +1,12 @@
 """
-LLM-based structured data extraction using LangChain and Groq.
+LLM-based structured data extraction using local Ollama models.
 """
 
 import os
 import json
 import re
+import requests
 from typing import Optional
-from langchain_groq import ChatGroq
-from langchain.prompts import PromptTemplate
 from dotenv import load_dotenv
 
 
@@ -15,31 +14,18 @@ load_dotenv()
 
 
 class LLMExtractor:
-    """Extract structured data from OCR text using LangChain and Groq."""
+    """Extract structured data from OCR text using local Ollama models."""
     
-    def __init__(self, model_name: str = "llama-3.1-8b-instant"):
+    def __init__(self, model_name: str = "llama3.1", ollama_url: str = "http://localhost:11434"):
         """
         Initialize the LLM extractor.
         
         Args:
-            model_name: Groq model to use for extraction
+            model_name: Ollama model to use for extraction (e.g., 'llama3.1', 'qwen2.5')
+            ollama_url: URL of the Ollama server
         """
-        api_key = os.getenv("GROQ_API_KEY")
-        if not api_key:
-            raise ValueError(
-                "GROQ_API_KEY not found. Please set it in your .env file."
-            )
-        
-        self.llm = ChatGroq(
-            groq_api_key=api_key,
-            model_name=model_name,
-            temperature=0.1
-        )
-        
-        self.prompt_template = PromptTemplate(
-            input_variables=["text"],
-            template=self._get_prompt_template()
-        )
+        self.model_name = model_name
+        self.ollama_url = ollama_url
         
         self.schema = {
             "type": "object",
@@ -55,9 +41,9 @@ class LLMExtractor:
             "required": ["document_type"]
         }
     
-    def _get_prompt_template(self) -> str:
+    def _get_prompt_template(self, text: str) -> str:
         """Return the prompt template for data extraction."""
-        return """You are an expert at extracting structured information from administrative documents (invoices, quotes, attestations).
+        return f"""You are an expert at extracting structured information from administrative documents (invoices, quotes, attestations).
 
 Analyze the following OCR-extracted text and extract the requested fields. Return ONLY a valid JSON object with the following structure:
 
@@ -94,29 +80,60 @@ Return ONLY the JSON object, no other text:"""
             Dictionary with extracted fields
         """
         try:
-            chain = self.llm | self._json_parser()
-            result = chain.invoke({"text": text})
-            return result
+            prompt = self._get_prompt_template(text)
+            response = self._call_ollama(prompt)
+            
+            # Extract JSON from response
+            json_str = self._extract_json_from_response(response)
+            if json_str:
+                return json.loads(json_str)
+            else:
+                raise ValueError("No JSON found in response")
         except Exception as e:
             print(f"LLM extraction error: {e}")
             return self._fallback_extraction(text)
     
-    def _json_parser(self):
-        """Parse LLM response as JSON."""
-        from langchain.output_parsers import ResponseSchema, StructuredOutputParser
+    def _call_ollama(self, prompt: str) -> str:
+        """
+        Call Ollama API with the given prompt.
         
-        response_schemas = [
-            ResponseSchema(name="document_type", description="Type of document (invoice, quote, attestation)"),
-            ResponseSchema(name="company_name", description="Name of the company"),
-            ResponseSchema(name="siren", description="9-digit SIREN number"),
-            ResponseSchema(name="siret", description="14-digit SIRET number"),
-            ResponseSchema(name="invoice_number", description="Document reference number"),
-            ResponseSchema(name="date", description="Date in YYYY-MM-DD format"),
-            ResponseSchema(name="amount", description="Total amount as number")
-        ]
+        Args:
+            prompt: The prompt to send to Ollama
+            
+        Returns:
+            Response from Ollama
+        """
+        url = f"{self.ollama_url}/api/generate"
+        payload = {
+            "model": self.model_name,
+            "prompt": prompt,
+            "stream": False,
+            "temperature": 0.1
+        }
         
-        parser = StructuredOutputParser.from_response_schemas(response_schemas)
-        return parser
+        try:
+            response = requests.post(url, json=payload, timeout=180)
+            response.raise_for_status()
+            result = response.json()
+            return result.get("response", "")
+        except requests.exceptions.RequestException as e:
+            raise ValueError(f"Failed to connect to Ollama at {self.ollama_url}. Make sure Ollama is running: {e}")
+    
+    def _extract_json_from_response(self, response: str) -> Optional[str]:
+        """
+        Extract JSON string from LLM response.
+        
+        Args:
+            response: Raw LLM response
+            
+        Returns:
+            JSON string or None
+        """
+        # Try to find JSON in the response
+        json_match = re.search(r'\{.*\}', response, re.DOTALL)
+        if json_match:
+            return json_match.group(0)
+        return None
     
     def _fallback_extraction(self, text: str) -> dict:
         """

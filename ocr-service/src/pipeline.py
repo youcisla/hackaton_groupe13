@@ -17,13 +17,13 @@ from .llm_extractor import LLMExtractor
 class DocumentPipeline:
     """Orchestrates the complete document processing workflow."""
     
-    def __init__(self):
+    def __init__(self, llm_model: str = "llama3.1"):
         """Initialize all pipeline components."""
         # Use 'fra' for French documents if French language pack is installed in Tesseract
         # Otherwise use 'eng' (English) which works by default
         self.ocr = OCR(lang='eng', config='--psm 6')
         self.detector = RegionDetector()
-        self.extractor = LLMExtractor()
+        self.extractor = LLMExtractor(model_name=llm_model)
     
     def load_document(self, file_path: str) -> str:
         """
