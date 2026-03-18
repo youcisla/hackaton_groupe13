@@ -13,6 +13,7 @@ x-airflow-common: &airflow-common
     NER_SERVICE_URL: http://ner-service:5002
     OLLAMA_URL: http://ollama:11434
     API_BACKEND_URL: http://api-backend:4000
+    _PIP_ADDITIONAL_REQUIREMENTS: "pymongo dnspython"
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
