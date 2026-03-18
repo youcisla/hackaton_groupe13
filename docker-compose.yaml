@@ -7,6 +7,7 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__FERNET_KEY: "46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLt0nfd5dI="
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     AIRFLOW__WEBSERVER__SECRET_KEY: "docuflow_secret_2024"
+    AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth"
     MONGO_URI: mongodb://mongo:27017
     OCR_SERVICE_URL: http://ocr-service:5001
     NER_SERVICE_URL: http://ner-service:5002

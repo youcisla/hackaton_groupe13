@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 MONGO_URI         = "mongodb://mongo:27017"
 MONGO_DB          = "docuflow"
 OCR_SERVICE_URL   = "http://ocr-service:5001"
-NER_SERVICE_URL   = "http://ner-service:5002"
+NER_SERVICE_URL   = "http://ner-service:8001"
 API_BACKEND_URL   = "http://api-backend:4000"
 
 DEFAULT_ARGS = {
@@ -71,10 +71,14 @@ def task_raw_zone(**ctx):
 
 
 def task_ocr(**ctx):
-    ti      = ctx["ti"]
-    file_id = ti.xcom_pull(task_ids="ingestion", key="file_id")
+    ti       = ctx["ti"]
+    file_id  = ti.xcom_pull(task_ids="ingestion", key="file_id")
+    filename = ti.xcom_pull(task_ids="ingestion", key="filename")
 
-    log.info(f"[OCR] Envoi du fichier {file_id} au service OCR...")
+    log.info(f"[OCR] Traitement du fichier {file_id}...")
+
+    # Chemin vers la vraie facture de test
+    file_path = f"/opt/airflow/uploads/{filename}"
 
     try:
         response = requests.post(
@@ -83,25 +87,24 @@ def task_ocr(**ctx):
             timeout=60
         )
         response.raise_for_status()
-        result = response.json()
+        result        = response.json()
         extracted_text = result.get("text", "")
         confidence     = result.get("confidence", 0)
 
-        log.info(f"[OCR] Texte extrait ({len(extracted_text)} chars, confiance={confidence:.2f})")
-
     except requests.exceptions.ConnectionError:
-        log.warning("[OCR] Service OCR non disponible — utilisation du mock")
-        extracted_text = """
-            FACTURE N° 2024-001
-            Fournisseur : ACME SAS
-            SIRET : 12345678901234
-            TVA : FR12345678901
-            Date d'émission : 15/01/2024
-            Montant HT : 1 000,00 €
-            TVA 20% : 200,00 €
-            Montant TTC : 1 200,00 €
-        """
-        confidence = 0.99  
+        log.warning("[OCR] Service OCR mock — appel direct au pipeline...")
+
+        import sys
+        sys.path.insert(0, "/opt/airflow/dags/ocr-service")
+        from src.pipeline import DocumentPipeline
+
+        pipeline = DocumentPipeline(llm_model="llama3.1")
+        results  = pipeline.process_document(file_path)
+
+        extracted_text = "\n".join([
+            str(r) for r in results
+        ])
+        confidence = 0.95
 
     ctx["ti"].xcom_push(key="extracted_text", value=extracted_text)
     ctx["ti"].xcom_push(key="ocr_confidence", value=confidence)
@@ -177,10 +180,10 @@ def task_validation(**ctx):
     autres_docs = {
         "attestation_urssaf": {
             "siret": entities.get("siret"),          
-            "date_expiration": "2025-12-31"
+            "date_expiration": "2026-12-31"
         },
         "kbis": {
-            "date_expiration": "2025-06-01"
+            "date_expiration": "2026-12-31"
         }
     }
 
