@@ -8,12 +8,29 @@ const ACCEPTED_TYPES = {
   'image/tiff': ['.tif', '.tiff'],
 }
 
-export default function DropZone({ onFilesAdded, disabled }) {
+const MAX_SIZE = 20 * 1024 * 1024 // 20 MB
+
+function getRejectionReason(errors) {
+  for (const err of errors) {
+    if (err.code === 'file-too-large') return 'Fichier trop volumineux (max 20 Mo)'
+    if (err.code === 'file-invalid-type') return 'Format non supporté (PDF, JPG, PNG, TIFF uniquement)'
+    if (err.code === 'too-many-files') return 'Trop de fichiers déposés à la fois'
+  }
+  return 'Fichier rejeté'
+}
+
+export default function DropZone({ onFilesAdded, onFilesRejected, disabled }) {
   const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
     accept: ACCEPTED_TYPES,
+    maxSize: MAX_SIZE,
     disabled,
-    onDrop: accepted => {
+    onDrop: (accepted, rejected) => {
       if (accepted.length > 0) onFilesAdded(accepted)
+      if (rejected.length > 0 && onFilesRejected) {
+        onFilesRejected(
+          rejected.map(r => ({ file: r.file, reason: getRejectionReason(r.errors) }))
+        )
+      }
     },
   })
 
@@ -49,7 +66,10 @@ export default function DropZone({ onFilesAdded, disabled }) {
               <p className="text-slate-400 text-sm mt-1">ou cliquez pour sélectionner</p>
             </div>
             <p className="text-slate-400 text-xs">
-              PDF, JPG, PNG, TIFF — Factures, devis, Kbis, attestations URSSAF, RIB
+              PDF, JPG, PNG, TIFF — max 20 Mo par fichier
+            </p>
+            <p className="text-slate-400 text-xs -mt-2">
+              Factures, devis, Kbis, attestations URSSAF, RIB
             </p>
           </>
         )}
