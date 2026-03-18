@@ -5,16 +5,33 @@ import { Cpu, Save, CheckCircle2, ArrowLeft } from 'lucide-react'
 import { getCRMData, saveCRMData } from '../../api/crm.js'
 import SkeletonCard from '../../components/SkeletonCard.jsx'
 
-function AutoFilledInput({ label, value, onChange, autoFilled }) {
+function Tooltip({ text, children }) {
+  const [show, setShow] = useState(false)
+  return (
+    <span className="relative inline-flex" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+      {children}
+      {show && (
+        <span className="absolute bottom-full right-0 mb-1.5 px-2 py-1 bg-slate-800 text-white text-xs rounded whitespace-nowrap z-50 shadow-lg max-w-xs">
+          {text}
+          <span className="absolute top-full right-2 border-4 border-transparent border-t-slate-800" />
+        </span>
+      )}
+    </span>
+  )
+}
+
+function AutoFilledInput({ label, value, onChange, autoFilled, sources }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
         <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</label>
         {autoFilled && (
-          <span className="inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded font-medium">
-            <Cpu size={9} />
-            Auto-rempli
-          </span>
+          <Tooltip text={sources?.length ? `Extrait depuis : ${sources.join(', ')}` : 'Extrait automatiquement par IA'}>
+            <span className="inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded font-medium cursor-help">
+              <Cpu size={9} />
+              Auto-rempli
+            </span>
+          </Tooltip>
         )}
       </div>
       <input
@@ -102,32 +119,27 @@ export default function CRMPage() {
           <div className="bg-white border border-slate-200 rounded-xl p-5">
             <SectionTitle>Informations société</SectionTitle>
             <div className="space-y-4">
-              <AutoFilledInput
-                label="Raison sociale"
-                value={form.raisonSociale}
-                onChange={v => setField('raisonSociale', v)}
-                autoFilled={!!data?.raisonSociale}
-              />
+              <AutoFilledInput label="Raison sociale" value={form.raisonSociale} onChange={v => setField('raisonSociale', v)} autoFilled={!!data?.raisonSociale} sources={data?._sourceDocuments} />
               <div className="grid grid-cols-2 gap-4">
-                <AutoFilledInput label="SIRET" value={form.siret} onChange={v => setField('siret', v)} autoFilled={!!data?.siret} />
-                <AutoFilledInput label="N° TVA" value={form.tva} onChange={v => setField('tva', v)} autoFilled={!!data?.tva} />
+                <AutoFilledInput label="SIRET" value={form.siret} onChange={v => setField('siret', v)} autoFilled={!!data?.siret} sources={data?._sourceDocuments} />
+                <AutoFilledInput label="N° TVA" value={form.tva} onChange={v => setField('tva', v)} autoFilled={!!data?.tva} sources={data?._sourceDocuments} />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <AutoFilledInput label="Forme juridique" value={form.formeJuridique} onChange={v => setField('formeJuridique', v)} autoFilled={!!data?.formeJuridique} />
-                <AutoFilledInput label="Capital social" value={form.capital} onChange={v => setField('capital', v)} autoFilled={!!data?.capital} />
+                <AutoFilledInput label="Forme juridique" value={form.formeJuridique} onChange={v => setField('formeJuridique', v)} autoFilled={!!data?.formeJuridique} sources={data?._sourceDocuments} />
+                <AutoFilledInput label="Capital social" value={form.capital} onChange={v => setField('capital', v)} autoFilled={!!data?.capital} sources={data?._sourceDocuments} />
               </div>
-              <AutoFilledInput label="Adresse du siège social" value={form.adresse} onChange={v => setField('adresse', v)} autoFilled={!!data?.adresse} />
-              <AutoFilledInput label="Activité principale" value={form.activite} onChange={v => setField('activite', v)} autoFilled={!!data?.activite} />
+              <AutoFilledInput label="Adresse du siège social" value={form.adresse} onChange={v => setField('adresse', v)} autoFilled={!!data?.adresse} sources={data?._sourceDocuments} />
+              <AutoFilledInput label="Activité principale" value={form.activite} onChange={v => setField('activite', v)} autoFilled={!!data?.activite} sources={data?._sourceDocuments} />
             </div>
           </div>
 
           <div className="bg-white border border-slate-200 rounded-xl p-5">
             <SectionTitle>Coordonnées bancaires</SectionTitle>
             <div className="space-y-4">
-              <AutoFilledInput label="IBAN" value={form.iban} onChange={v => setField('iban', v)} autoFilled={!!data?.iban} />
+              <AutoFilledInput label="IBAN" value={form.iban} onChange={v => setField('iban', v)} autoFilled={!!data?.iban} sources={data?._sourceDocuments} />
               <div className="grid grid-cols-2 gap-4">
-                <AutoFilledInput label="BIC / SWIFT" value={form.bic} onChange={v => setField('bic', v)} autoFilled={!!data?.bic} />
-                <AutoFilledInput label="Banque" value={form.banque} onChange={v => setField('banque', v)} autoFilled={!!data?.banque} />
+                <AutoFilledInput label="BIC / SWIFT" value={form.bic} onChange={v => setField('bic', v)} autoFilled={!!data?.bic} sources={data?._sourceDocuments} />
+                <AutoFilledInput label="Banque" value={form.banque} onChange={v => setField('banque', v)} autoFilled={!!data?.banque} sources={data?._sourceDocuments} />
               </div>
             </div>
           </div>

@@ -8,6 +8,7 @@ import { uploadDocuments } from '../../api/documents.js'
 export default function UploadPage() {
   const [files, setFiles] = useState([])
   const [fileStatuses, setFileStatuses] = useState({})
+  const [fileRejections, setFileRejections] = useState({})
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState(null)
   const navigate = useNavigate()
@@ -20,35 +21,47 @@ export default function UploadPage() {
     setFileStatuses(prev => ({ ...prev, ...statuses }))
   }
 
+  function handleFilesRejected(rejected) {
+    const newFiles = rejected.map(r => r.file).filter(f => !files.some(existing => existing.name === f.name))
+    setFiles(prev => [...prev, ...newFiles])
+    const statuses = {}
+    const rejections = {}
+    rejected.forEach(r => {
+      statuses[r.file.name] = 'invalid'
+      rejections[r.file.name] = r.reason
+    })
+    setFileStatuses(prev => ({ ...prev, ...statuses }))
+    setFileRejections(prev => ({ ...prev, ...rejections }))
+  }
+
   function handleRemove(file) {
     setFiles(prev => prev.filter(f => f.name !== file.name))
-    setFileStatuses(prev => {
-      const next = { ...prev }
-      delete next[file.name]
-      return next
-    })
+    setFileStatuses(prev => { const n = { ...prev }; delete n[file.name]; return n })
+    setFileRejections(prev => { const n = { ...prev }; delete n[file.name]; return n })
   }
 
   function clearAll() {
     setFiles([])
     setFileStatuses({})
+    setFileRejections({})
     setError(null)
   }
 
   async function handleUpload() {
-    if (files.length === 0) return
+    const validFiles = files.filter(f => fileStatuses[f.name] !== 'invalid')
+    if (validFiles.length === 0) return
     setUploading(true)
     setError(null)
 
     const pending = {}
-    files.forEach(f => { pending[f.name] = 'uploading' })
-    setFileStatuses(pending)
+    validFiles.forEach(f => { pending[f.name] = 'uploading' })
+    setFileStatuses(prev => ({ ...prev, ...pending }))
 
     try {
-      const result = await uploadDocuments(files)
+      const result = await uploadDocuments(validFiles)
 
       const done = {}
-      files.forEach(f => { done[f.name] = 'done' })
+      validFiles.forEach(f => { done[f.name] = 'done' })
       setFileStatuses(done)
 
       await new Promise(r => setTimeout(r, 800))
@@ -72,7 +85,7 @@ export default function UploadPage() {
         </p>
       </div>
 
-      <DropZone onFilesAdded={handleFilesAdded} disabled={uploading} />
+      <DropZone onFilesAdded={handleFilesAdded} onFilesRejected={handleFilesRejected} disabled={uploading} />
 
       {files.length > 0 && (
         <div className="mt-6 space-y-2">
@@ -96,6 +109,7 @@ export default function UploadPage() {
               key={file.name}
               file={file}
               status={fileStatuses[file.name] || 'idle'}
+              rejectionReason={fileRejections[file.name]}
               onRemove={handleRemove}
             />
           ))}
@@ -110,14 +124,27 @@ export default function UploadPage() {
 
       {files.length > 0 && (
         <div className="mt-6">
-          <button
-            onClick={handleUpload}
-            disabled={uploading}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold rounded-xl transition-colors text-sm shadow-sm"
-          >
-            <Sparkles size={16} />
-            {uploading ? 'Envoi en cours...' : `Analyser ${files.length} document${files.length > 1 ? 's' : ''}`}
-          </button>
+          {(() => {
+            const validCount = files.filter(f => fileStatuses[f.name] !== 'invalid').length
+            const invalidCount = files.length - validCount
+            return (
+              <>
+                {invalidCount > 0 && (
+                  <p className="text-xs text-amber-600 mb-2 text-center">
+                    {invalidCount} fichier{invalidCount > 1 ? 's' : ''} ignoré{invalidCount > 1 ? 's' : ''} (format ou taille invalide)
+                  </p>
+                )}
+                <button
+                  onClick={handleUpload}
+                  disabled={uploading || validCount === 0}
+                  className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold rounded-xl transition-colors text-sm shadow-sm"
+                >
+                  <Sparkles size={16} />
+                  {uploading ? 'Envoi en cours…' : `Analyser ${validCount} document${validCount > 1 ? 's' : ''}`}
+                </button>
+              </>
+            )
+          })()}
           <p className="text-center text-xs text-slate-400 mt-2">
             Classification automatique • OCR • Vérification inter-documents
           </p>
