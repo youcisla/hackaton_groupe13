@@ -10,8 +10,6 @@ x-airflow-common: &airflow-common
     _PIP_ADDITIONAL_REQUIREMENTS: "pymongo dnspython requests"
     MONGO_URI: ${MONGO_URI}
     MONGO_DB: ${MONGO_DB}
-    OCR_SERVICE_URL: http://ocr-service:5001
-    NER_SERVICE_URL: http://ner-service:8001
     API_BACKEND_URL: http://api-backend:3001
   volumes:
     - ./dags:/opt/airflow/dags
@@ -40,44 +38,6 @@ services:
     networks:
       - docuflow-net
 
-  ocr-service:
-    build:
-      context: ./ocr-service
-      dockerfile: Dockerfile
-    ports:
-      - "5001:5001"
-    volumes:
-      - uploads-data:/app/uploads
-    environment:
-      MONGO_URI: ${MONGO_URI}
-      MONGO_DB: ${MONGO_DB}
-      OLLAMA_URL: http://ollama:11434
-    networks:
-      - docuflow-net
-
-  ner-service:
-    build:
-      context: ./services/ner-service
-      dockerfile: Dockerfile
-    ports:
-      - "5002:8001"
-    environment:
-      MONGO_URI: ${MONGO_URI}
-      MONGO_DB: ${MONGO_DB}
-    networks:
-      - docuflow-net
-
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama-data:/root/.ollama
-    environment:
-      OLLAMA_KEEP_ALIVE: "24h"
-    networks:
-      - docuflow-net
-
   airflow-init:
     <<: *airflow-common
     command: bash -c "airflow db migrate && airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@docuflow.io"
@@ -101,7 +61,6 @@ services:
         condition: service_completed_successfully
     restart: unless-stopped
 
-
   api-backend:
     build:
       context: ./backend
@@ -115,16 +74,11 @@ services:
       PORT: 3001
       MONGO_URI: ${MONGO_URI}
       MONGO_DB: ${MONGO_DB}
-      OCR_SERVICE_URL: http://ocr-service:5001
-      NER_SERVICE_URL: http://ner-service:8001
-      OLLAMA_URL: http://ollama:11434
+      GROQ_API_KEY: ${GROQ_API_KEY}
       AIRFLOW_URL: http://airflow-webserver:8080
       AIRFLOW_USER: admin
       AIRFLOW_PASS: admin
       USE_MOCK_SERVICES: "false"
-    depends_on:
-      - ocr-service
-      - ner-service
     networks:
       - docuflow-net
 
@@ -144,7 +98,6 @@ services:
 volumes:
   postgres-data:
   uploads-data:
-  ollama-data:
 
 networks:
   docuflow-net:
